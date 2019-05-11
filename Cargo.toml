@@ -5,3 +5,4 @@ authors = ["Robby Stokoe <robbystk@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+termios = "0.3"

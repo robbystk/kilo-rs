@@ -32,6 +32,12 @@ fn main() {
         if let Some(Ok(c)) = io::stdin().bytes().next() {
             if c == 'q' as u8 {
                 break;
+            } else {
+                if char::from(c).is_ascii_control() {
+                    println!("{}", c);
+                } else {
+                    println!("{} ({})", c, char::from(c));
+                }
             }
         } else {
             break;

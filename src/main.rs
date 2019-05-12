@@ -12,7 +12,7 @@ fn enable_raw_mode() -> Termios {
     let orig_termios = Termios::from_fd(stdin).unwrap();
     let mut raw = orig_termios;
 
-    raw.c_lflag &= !(ECHO);
+    raw.c_lflag &= !(ECHO | ICANON);
 
     tcsetattr(stdin, TCSAFLUSH, & mut raw).unwrap();
 

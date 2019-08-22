@@ -12,7 +12,12 @@ fn enable_raw_mode() -> Termios {
     let orig_termios = Termios::from_fd(stdin).unwrap();
     let mut raw = orig_termios;
 
-    raw.c_lflag &= !(ECHO | ICANON);
+    raw.c_lflag &= !(ECHO | ICANON | ISIG | IEXTEN);
+    raw.c_iflag &= !(IXON | ICRNL | BRKINT | INPCK | ISTRIP);
+    raw.c_oflag &= !(OPOST);
+    raw.c_cflag |= CS8;
+    raw.c_cc[VMIN] = 0;
+    raw.c_cc[VTIME] = 1;
 
     tcsetattr(stdin, TCSAFLUSH, & mut raw).unwrap();
 
@@ -29,18 +34,20 @@ fn main() {
     let orig_termios = enable_raw_mode();
 
     loop {
-        if let Some(Ok(c)) = io::stdin().bytes().next() {
-            if c == 'q' as u8 {
+        let mut c: u8;
+        if let Some(Ok(b)) = io::stdin().bytes().next() {
+            if b == 'q' as u8 {
                 break;
             } else {
-                if char::from(c).is_ascii_control() {
-                    println!("{}", c);
-                } else {
-                    println!("{} ({})", c, char::from(c));
-                }
+                c = b;
             }
         } else {
-            break;
+            c = '\0' as u8;
+        }
+        if char::from(c).is_ascii_control() {
+            print!("{}\r\n", c);
+        } else {
+            print!("{} ({})\r\n", c, char::from(c));
         }
     }
 

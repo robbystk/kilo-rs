@@ -34,16 +34,20 @@ fn main() {
     let orig_termios = enable_raw_mode();
 
     loop {
-        let mut c: u8;
-        if let Some(Ok(b)) = io::stdin().bytes().next() {
-            if b == 'q' as u8 {
-                break;
-            } else {
-                c = b;
+        let c = match io::stdin().bytes().next() {
+            None => '\0' as u8,
+            Some(Ok(c)) => c,
+            Some(Err(e)) => {
+                panic!("read: {}\r\n", e);
             }
-        } else {
-            c = '\0' as u8;
+        };
+
+        // quit on 'q'
+        if c == 'q' as u8 {
+            break;
         }
+
+        // print character
         if char::from(c).is_ascii_control() {
             print!("{}\r\n", c);
         } else {

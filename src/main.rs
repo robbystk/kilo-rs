@@ -1,6 +1,6 @@
 /*** includes ***/
 use std::io;
-use std::io::Read;
+use std::io::{Read, Write};
 use std::os::unix::io::AsRawFd;
 use std::process::exit;
 
@@ -55,6 +55,18 @@ fn editor_read_key() -> u8 {
     }
 }
 
+/*** output ***/
+
+fn editor_refresh_screen() {
+    let mut stdout = io::stdout();
+    // clear screen
+    stdout.write(b"\x1b[2J").unwrap();
+    // make sure things get written
+    stdout.flush().unwrap()
+}
+
+/*** input ***/
+
 /// Read and process a keypress
 ///
 /// Currently handls Ctrl-q to quit logic and prints the character or character
@@ -82,6 +94,7 @@ fn main() {
     let orig_termios = enable_raw_mode();
 
     loop {
+        editor_refresh_screen();
         editor_process_keypress(orig_termios);
     }
 }

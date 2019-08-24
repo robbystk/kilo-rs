@@ -9,7 +9,7 @@ use termios::*;
 fn enable_raw_mode() -> Termios {
     let stdin = io::stdin().as_raw_fd();
 
-    let orig_termios = Termios::from_fd(stdin).unwrap();
+    let orig_termios = Termios::from_fd(stdin).expect("tcgetattr");
     let mut raw = orig_termios;
 
     raw.c_lflag &= !(ECHO | ICANON | ISIG | IEXTEN);
@@ -36,10 +36,7 @@ fn main() {
     loop {
         let c = match io::stdin().bytes().next() {
             None => '\0' as u8,
-            Some(Ok(c)) => c,
-            Some(Err(e)) => {
-                panic!("read: {}\r\n", e);
-            }
+            Some(r) => r.expect("read error"),
         };
 
         // quit on 'q'

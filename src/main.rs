@@ -6,6 +6,10 @@ use std::os::unix::io::AsRawFd;
 
 use termios::*;
 
+macro_rules! ctrl_key {
+    ($k:literal) => {($k) as u8 & 0x1f}
+}
+
 fn enable_raw_mode() -> Termios {
     let stdin = io::stdin().as_raw_fd();
 
@@ -40,7 +44,7 @@ fn main() {
         };
 
         // quit on 'q'
-        if c == 'q' as u8 {
+        if c == ctrl_key!('q') {
             break;
         }
 

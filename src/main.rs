@@ -3,6 +3,7 @@ extern crate termios;
 use std::io;
 use std::io::Read;
 use std::os::unix::io::AsRawFd;
+use std::process::exit;
 
 use termios::*;
 
@@ -34,27 +35,35 @@ fn reset_mode(orig_mode: Termios) {
     tcsetattr(stdin, TCSAFLUSH, & orig_mode).unwrap();
 }
 
+fn editor_read_key() -> u8 {
+    loop {
+        if let Some(r) = io::stdin().bytes().next() {
+            return r.expect("read error");
+        }
+    }
+}
+
+fn editor_process_keypress(orig: Termios) {
+    let c = editor_read_key();
+
+    // quit on Ctrl-q
+    if c == ctrl_key!('q') {
+        reset_mode(orig);
+        exit(0);
+    }
+
+    // print character
+    if char::from(c).is_ascii_control() {
+        print!("{}\r\n", c);
+    } else {
+        print!("{} ({})\r\n", c, char::from(c));
+    }
+}
+
 fn main() {
     let orig_termios = enable_raw_mode();
 
     loop {
-        let c = match io::stdin().bytes().next() {
-            None => '\0' as u8,
-            Some(r) => r.expect("read error"),
-        };
-
-        // quit on Ctrl-q
-        if c == ctrl_key!('q') {
-            break;
-        }
-
-        // print character
-        if char::from(c).is_ascii_control() {
-            print!("{}\r\n", c);
-        } else {
-            print!("{} ({})\r\n", c, char::from(c));
-        }
+        editor_process_keypress(orig_termios);
     }
-
-    reset_mode(orig_termios);
 }

@@ -14,6 +14,11 @@ macro_rules! ctrl_key {
 
 /*** terminal ***/
 
+/// Enables raw mode in the terminal
+///
+/// This includes setting a timeout of 0.1 seconds for reading stdin.  Saves and
+/// returns the original configuration so that the calling code can return the
+/// terminal to its original state using reset_mode() below.
 fn enable_raw_mode() -> Termios {
     let stdin = io::stdin().as_raw_fd();
 
@@ -32,12 +37,16 @@ fn enable_raw_mode() -> Termios {
     orig_termios
 }
 
+/// Reset the terminal to its original state
 fn reset_mode(orig_mode: Termios) {
     let stdin = io::stdin().as_raw_fd();
 
     tcsetattr(stdin, TCSAFLUSH, & orig_mode).unwrap();
 }
 
+/// Read a keypress from stdin
+///
+/// Waits until a keypress or error is recieved.
 fn editor_read_key() -> u8 {
     loop {
         if let Some(r) = io::stdin().bytes().next() {
@@ -46,6 +55,10 @@ fn editor_read_key() -> u8 {
     }
 }
 
+/// Read and process a keypress
+///
+/// Currently handls Ctrl-q to quit logic and prints the character or character
+/// code if it's a control character.
 fn editor_process_keypress(orig: Termios) {
     let c = editor_read_key();
 

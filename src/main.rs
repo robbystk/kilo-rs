@@ -43,7 +43,7 @@ fn main() {
             Some(r) => r.expect("read error"),
         };
 
-        // quit on 'q'
+        // quit on Ctrl-q
         if c == ctrl_key!('q') {
             break;
         }

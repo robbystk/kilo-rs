@@ -57,11 +57,24 @@ fn editor_read_key() -> u8 {
 
 /*** output ***/
 
+/// Draw each row of the screen
+fn editor_draw_rows() {
+    let mut stdout = io::stdout();
+
+    for _ in (0..24) {
+        stdout.write(b"~\r\n").unwrap();
+    }
+}
+
+/// Refresh the text on the screen
 fn editor_refresh_screen() {
     let mut stdout = io::stdout();
     // clear screen
     stdout.write(b"\x1b[2J").unwrap();
     // move cursor to top left
+    stdout.write(b"\x1b[H").unwrap();
+    // draw a column of tildes like vim
+    editor_draw_rows();
     stdout.write(b"\x1b[H").unwrap();
     // make sure things get written
     stdout.flush().unwrap()
@@ -85,13 +98,6 @@ fn editor_process_keypress(orig: Termios) {
         stdout.flush().unwrap();
         reset_mode(orig);
         exit(0);
-    }
-
-    // print character
-    if char::from(c).is_ascii_control() {
-        print!("{}\r\n", c);
-    } else {
-        print!("{} ({})\r\n", c, char::from(c));
     }
 }
 

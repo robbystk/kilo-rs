@@ -2,7 +2,6 @@
 use std::io;
 use std::io::{Read, Write};
 use std::os::unix::io::AsRawFd;
-use std::process::exit;
 
 extern crate termios;
 use termios::*;
@@ -14,12 +13,27 @@ macro_rules! ctrl_key {
 
 /*** data ***/
 struct EditorConfig {
-    orig_termios: Option<Termios>,
+    orig_termios: Termios,
 }
 
-static mut E: EditorConfig = EditorConfig {
-    orig_termios: None,
-};
+impl EditorConfig {
+    fn setup() -> EditorConfig {
+        EditorConfig {
+            orig_termios: enable_raw_mode(),
+        }
+    }
+}
+
+impl Drop for EditorConfig {
+    fn drop(&mut self) {
+        // clear screen and restore terminal settings
+        let mut stdout = io::stdout();
+        stdout.write(b"\x1b[2J").unwrap();
+        stdout.write(b"\x1b[H").unwrap();
+        stdout.flush().unwrap();
+        reset_mode(self.orig_termios);
+    }
+}
 
 /*** terminal ***/
 
@@ -95,32 +109,20 @@ fn editor_refresh_screen() {
 ///
 /// Currently handls Ctrl-q to quit logic and prints the character or character
 /// code if it's a control character.
-fn editor_process_keypress(orig: Termios) {
+fn editor_process_keypress() -> bool {
     let c = editor_read_key();
 
     // quit on Ctrl-q
-    if c == ctrl_key!('q') {
-        println!("wat");
-        let mut stdout = io::stdout();
-        stdout.write(b"\x1b[2J").unwrap();
-        stdout.write(b"\x1b[H").unwrap();
-        stdout.flush().unwrap();
-        reset_mode(orig);
-        exit(0);
-    }
+    c == ctrl_key!('q')
 }
 
 /*** init ***/
 
 fn main() {
-    unsafe {
-        E.orig_termios = Some(enable_raw_mode());
-    };
+    let cfg = EditorConfig::setup();
 
     loop {
         editor_refresh_screen();
-        unsafe {
-            editor_process_keypress(E.orig_termios.unwrap());
-        }
+        if editor_process_keypress() {break;}
     }
 }

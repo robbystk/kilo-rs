@@ -1,15 +1,18 @@
-extern crate termios;
-
+/*** includes ***/
 use std::io;
 use std::io::Read;
 use std::os::unix::io::AsRawFd;
 use std::process::exit;
 
+extern crate termios;
 use termios::*;
 
+/*** macros ***/
 macro_rules! ctrl_key {
     ($k:literal) => {($k) as u8 & 0x1f}
 }
+
+/*** terminal ***/
 
 fn enable_raw_mode() -> Termios {
     let stdin = io::stdin().as_raw_fd();
@@ -59,6 +62,8 @@ fn editor_process_keypress(orig: Termios) {
         print!("{} ({})\r\n", c, char::from(c));
     }
 }
+
+/*** init ***/
 
 fn main() {
     let orig_termios = enable_raw_mode();

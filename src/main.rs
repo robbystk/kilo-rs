@@ -61,6 +61,8 @@ fn editor_refresh_screen() {
     let mut stdout = io::stdout();
     // clear screen
     stdout.write(b"\x1b[2J").unwrap();
+    // move cursor to top left
+    stdout.write(b"\x1b[H").unwrap();
     // make sure things get written
     stdout.flush().unwrap()
 }
@@ -76,6 +78,11 @@ fn editor_process_keypress(orig: Termios) {
 
     // quit on Ctrl-q
     if c == ctrl_key!('q') {
+        println!("wat");
+        let mut stdout = io::stdout();
+        stdout.write(b"\x1b[2J").unwrap();
+        stdout.write(b"\x1b[H").unwrap();
+        stdout.flush().unwrap();
         reset_mode(orig);
         exit(0);
     }

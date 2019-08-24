@@ -12,11 +12,17 @@ macro_rules! ctrl_key {
 }
 
 /*** data ***/
+
+/// Stores editor configuration such as terminal size
 struct EditorConfig {
     orig_termios: Termios,
 }
 
 impl EditorConfig {
+    /// Initializes the configuration
+    ///
+    /// Includes enabling raw mode and saving the original terminal
+    /// configuration for restoration upon exit.
     fn setup() -> EditorConfig {
         EditorConfig {
             orig_termios: enable_raw_mode(),
@@ -81,6 +87,9 @@ fn editor_read_key() -> u8 {
 /*** output ***/
 
 /// Draw each row of the screen
+///
+/// Currently we have no lines, so it just draws a tilde at the beginning of
+/// each line, like vim.
 fn editor_draw_rows() {
     let mut stdout = io::stdout();
 

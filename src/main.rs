@@ -12,6 +12,15 @@ macro_rules! ctrl_key {
     ($k:literal) => {($k) as u8 & 0x1f}
 }
 
+/*** data ***/
+struct EditorConfig {
+    orig_termios: Option<Termios>,
+}
+
+static mut E: EditorConfig = EditorConfig {
+    orig_termios: None,
+};
+
 /*** terminal ***/
 
 /// Enables raw mode in the terminal
@@ -61,7 +70,7 @@ fn editor_read_key() -> u8 {
 fn editor_draw_rows() {
     let mut stdout = io::stdout();
 
-    for _ in (0..24) {
+    for _ in 0..24 {
         stdout.write(b"~\r\n").unwrap();
     }
 }
@@ -104,10 +113,14 @@ fn editor_process_keypress(orig: Termios) {
 /*** init ***/
 
 fn main() {
-    let orig_termios = enable_raw_mode();
+    unsafe {
+        E.orig_termios = Some(enable_raw_mode());
+    };
 
     loop {
         editor_refresh_screen();
-        editor_process_keypress(orig_termios);
+        unsafe {
+            editor_process_keypress(E.orig_termios.unwrap());
+        }
     }
 }

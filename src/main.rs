@@ -134,4 +134,6 @@ fn main() {
         editor_refresh_screen();
         if editor_process_keypress() {break;}
     }
+
+    reset_mode(cfg.orig_termios);
 }

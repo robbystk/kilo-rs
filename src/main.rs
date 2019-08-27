@@ -157,6 +157,9 @@ fn editor_draw_rows(config: &EditorConfig, buf: &mut String) {
 /// Refresh the text on the screen
 fn editor_refresh_screen(config: &EditorConfig) {
     let mut buf = String::from("");
+
+    // hide cursor
+    buf.push_str("\x1b[?25l");
     // clear screen
     buf.push_str("\x1b[2J");
     // move cursor to top left
@@ -165,6 +168,8 @@ fn editor_refresh_screen(config: &EditorConfig) {
     editor_draw_rows(config, &mut buf);
     // move cursor back to upper left
     buf.push_str("\x1b[H");
+    // show cursor
+    buf.push_str("\x1b[?25h");
 
     io::stdout().write(&buf.as_bytes()).unwrap();
     // make sure things get written

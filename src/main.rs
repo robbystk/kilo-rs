@@ -17,6 +17,8 @@ macro_rules! ctrl_key {
 
 /*** data ***/
 
+const KILO_VERSION: &str = "0.0.1";
+
 /// Stores editor configuration such as terminal size
 struct EditorConfig {
     orig_termios: Termios,
@@ -143,11 +145,31 @@ fn get_window_size() -> Result<(u16, u16), std::io::Error> {
 
 /// Draw each row of the screen
 ///
-/// Currently we have no lines, so it just draws a tilde at the beginning of
-/// each line, like vim.
+/// Currently we have no lines, so this draws a tilde at the beginning of
+/// each line, like vim, and prints a centered welcome message a third
+/// of the way down the screen.
 fn editor_draw_rows(config: &EditorConfig, buf: &mut String) {
     for i in 0..config.rows {
-        buf.push('~');
+        if i == config.rows / 3 {
+            let mut welcome = format!("Kilo Editor -- version {}", KILO_VERSION);
+            if welcome.len() > config.cols as usize {
+                welcome = String::from_utf8(
+                        welcome.into_bytes()[0..config.cols as usize]
+                        .to_vec()
+                    ).unwrap();
+            }
+            let mut padding = (config.cols as usize - welcome.len()) / 2;
+            if padding > 0 {
+                buf.push('~');
+                padding -= 1;
+            }
+            for _ in 0..padding {
+                buf.push(' ');
+            }
+            buf.push_str(&welcome);
+        } else {
+            buf.push('~');
+        }
         // clear remainder of row
         buf.push_str("\x1b[K");
         if i < config.rows - 1 {

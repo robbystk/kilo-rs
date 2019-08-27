@@ -6,6 +6,9 @@ use std::os::unix::io::AsRawFd;
 extern crate termios;
 use termios::*;
 
+extern crate libc;
+use libc::{ioctl, winsize, TIOCGWINSZ};
+
 /*** macros ***/
 macro_rules! ctrl_key {
     ($k:literal) => {($k) as u8 & 0x1f}
@@ -16,6 +19,8 @@ macro_rules! ctrl_key {
 /// Stores editor configuration such as terminal size
 struct EditorConfig {
     orig_termios: Termios,
+    rows: u16,
+    cols: u16,
 }
 
 impl EditorConfig {
@@ -24,8 +29,12 @@ impl EditorConfig {
     /// Includes enabling raw mode and saving the original terminal
     /// configuration for restoration upon exit.
     fn setup() -> EditorConfig {
+        let (rows, cols) = get_window_size();
+
         EditorConfig {
             orig_termios: enable_raw_mode(),
+            rows,
+            cols,
         }
     }
 }
@@ -84,29 +93,44 @@ fn editor_read_key() -> u8 {
     }
 }
 
+fn get_window_size() -> (u16, u16) {
+    let mut ws = winsize {
+        ws_row: 0,
+        ws_col: 0,
+        ws_xpixel: 0,
+        ws_ypixel: 0,
+    };
+
+    unsafe {
+        ioctl(io::stdin().as_raw_fd(), TIOCGWINSZ, &mut ws);
+    }
+
+    (ws.ws_row, ws.ws_col)
+}
+
 /*** output ***/
 
 /// Draw each row of the screen
 ///
 /// Currently we have no lines, so it just draws a tilde at the beginning of
 /// each line, like vim.
-fn editor_draw_rows() {
+fn editor_draw_rows(config: &EditorConfig) {
     let mut stdout = io::stdout();
 
-    for _ in 0..24 {
+    for _ in 0..config.rows {
         stdout.write(b"~\r\n").unwrap();
     }
 }
 
 /// Refresh the text on the screen
-fn editor_refresh_screen() {
+fn editor_refresh_screen(config: &EditorConfig) {
     let mut stdout = io::stdout();
     // clear screen
     stdout.write(b"\x1b[2J").unwrap();
     // move cursor to top left
     stdout.write(b"\x1b[H").unwrap();
     // draw a column of tildes like vim
-    editor_draw_rows();
+    editor_draw_rows(config);
     stdout.write(b"\x1b[H").unwrap();
     // make sure things get written
     stdout.flush().unwrap()
@@ -131,7 +155,7 @@ fn main() {
     let cfg = EditorConfig::setup();
 
     loop {
-        editor_refresh_screen();
+        editor_refresh_screen(&cfg);
         if editor_process_keypress() {break;}
     }
 

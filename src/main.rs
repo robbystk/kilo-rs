@@ -148,6 +148,8 @@ fn get_window_size() -> Result<(u16, u16), std::io::Error> {
 fn editor_draw_rows(config: &EditorConfig, buf: &mut String) {
     for i in 0..config.rows {
         buf.push('~');
+        // clear remainder of row
+        buf.push_str("\x1b[K");
         if i < config.rows - 1 {
             buf.push_str("\r\n");
         }
@@ -160,8 +162,6 @@ fn editor_refresh_screen(config: &EditorConfig) {
 
     // hide cursor
     buf.push_str("\x1b[?25l");
-    // clear screen
-    buf.push_str("\x1b[2J");
     // move cursor to top left
     buf.push_str("\x1b[H");
     // draw a column of tildes like vim

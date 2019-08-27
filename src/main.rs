@@ -128,7 +128,7 @@ fn get_window_size() -> Result<(usize, usize), std::io::Error> {
         ws_ypixel: 0,
     };
 
-    let mut ret_val = -1;
+    let ret_val;
     unsafe {
         ret_val = ioctl(io::stdin().as_raw_fd(), TIOCGWINSZ, &mut ws);
     }

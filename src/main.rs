@@ -22,8 +22,8 @@ const KILO_VERSION: &str = "0.0.1";
 /// Stores editor configuration such as terminal size
 struct EditorConfig {
     orig_termios: Termios,
-    rows: u16,
-    cols: u16,
+    rows: usize,
+    cols: usize,
 }
 
 impl EditorConfig {
@@ -98,7 +98,7 @@ fn editor_read_key() -> u8 {
     }
 }
 
-fn get_cursor_position() -> Result<(u16, u16), std::io::Error> {
+fn get_cursor_position() -> Result<(usize, usize), std::io::Error> {
     // TODO: rework error handling
     io::stdout().write(b"\x1b[6n").unwrap();
     io::stdout().flush().unwrap();
@@ -111,7 +111,7 @@ fn get_cursor_position() -> Result<(u16, u16), std::io::Error> {
         return Err(Error::new(ErrorKind::Other,
             "invalid character position report"));
     }
-    let data: Vec<u16> = str::from_utf8(&cpr[1..]).unwrap()
+    let data: Vec<usize> = str::from_utf8(&cpr[1..]).unwrap()
         .trim_matches(|c| c == 'R' || c == '[')
         .split(';')
         .map(|s| s.parse().expect("parse error"))
@@ -120,7 +120,7 @@ fn get_cursor_position() -> Result<(u16, u16), std::io::Error> {
     Ok((data[0], data[1]))
 }
 
-fn get_window_size() -> Result<(u16, u16), std::io::Error> {
+fn get_window_size() -> Result<(usize, usize), std::io::Error> {
     let mut ws = winsize {
         ws_row: 0,
         ws_col: 0,
@@ -138,7 +138,7 @@ fn get_window_size() -> Result<(u16, u16), std::io::Error> {
         return get_cursor_position();
     }
 
-    Ok((ws.ws_row, ws.ws_col))
+    Ok((ws.ws_row as usize, ws.ws_col as usize))
 }
 
 /*** output ***/
@@ -152,13 +152,13 @@ fn editor_draw_rows(config: &EditorConfig, buf: &mut String) {
     for i in 0..config.rows {
         if i == config.rows / 3 {
             let mut welcome = format!("Kilo Editor -- version {}", KILO_VERSION);
-            if welcome.len() > config.cols as usize {
+            if welcome.len() > config.cols {
                 welcome = String::from_utf8(
-                        welcome.into_bytes()[0..config.cols as usize]
+                        welcome.into_bytes()[0..config.cols]
                         .to_vec()
                     ).unwrap();
             }
-            let mut padding = (config.cols as usize - welcome.len()) / 2;
+            let mut padding = (config.cols - welcome.len()) / 2;
             if padding > 0 {
                 buf.push('~');
                 padding -= 1;

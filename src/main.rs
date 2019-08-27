@@ -117,9 +117,13 @@ fn get_window_size() -> (u16, u16) {
 fn editor_draw_rows(config: &EditorConfig) {
     let mut stdout = io::stdout();
 
-    for _ in 0..config.rows {
-        stdout.write(b"~\r\n").unwrap();
+    for i in 0..config.rows {
+        stdout.write(b"~").unwrap();
+        if i < config.rows - 1 {
+            stdout.write(b"\r\n").unwrap();
+        }
     }
+    stdout.flush().unwrap();
 }
 
 /// Refresh the text on the screen

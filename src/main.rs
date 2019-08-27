@@ -145,30 +145,30 @@ fn get_window_size() -> Result<(u16, u16), std::io::Error> {
 ///
 /// Currently we have no lines, so it just draws a tilde at the beginning of
 /// each line, like vim.
-fn editor_draw_rows(config: &EditorConfig) {
-    let mut stdout = io::stdout();
-
+fn editor_draw_rows(config: &EditorConfig, buf: &mut String) {
     for i in 0..config.rows {
-        stdout.write(b"~").unwrap();
+        buf.push('~');
         if i < config.rows - 1 {
-            stdout.write(b"\r\n").unwrap();
+            buf.push_str("\r\n");
         }
     }
-    stdout.flush().unwrap();
 }
 
 /// Refresh the text on the screen
 fn editor_refresh_screen(config: &EditorConfig) {
-    let mut stdout = io::stdout();
+    let mut buf = String::from("");
     // clear screen
-    stdout.write(b"\x1b[2J").unwrap();
+    buf.push_str("\x1b[2J");
     // move cursor to top left
-    stdout.write(b"\x1b[H").unwrap();
+    buf.push_str("\x1b[H");
     // draw a column of tildes like vim
-    editor_draw_rows(config);
-    stdout.write(b"\x1b[H").unwrap();
+    editor_draw_rows(config, &mut buf);
+    // move cursor back to upper left
+    buf.push_str("\x1b[H");
+
+    io::stdout().write(&buf.as_bytes()).unwrap();
     // make sure things get written
-    stdout.flush().unwrap()
+    io::stdout().flush().unwrap()
 }
 
 /*** input ***/

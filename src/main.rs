@@ -29,7 +29,8 @@ impl EditorConfig {
     /// Includes enabling raw mode and saving the original terminal
     /// configuration for restoration upon exit.
     fn setup() -> EditorConfig {
-        let (rows, cols) = get_window_size().unwrap();
+        let (rows, cols) = get_window_size()
+            .expect("Could not get window size");
 
         EditorConfig {
             orig_termios: enable_raw_mode(),
@@ -101,10 +102,13 @@ fn get_window_size() -> Result<(u16, u16), &'static str> {
         ws_ypixel: 0,
     };
 
+    let mut ret_val = -1;
     unsafe {
-        if ioctl(io::stdin().as_raw_fd(), TIOCGWINSZ, &mut ws) == -1 {
-            return Err("ioctl error");
-        };
+        ret_val = ioctl(io::stdin().as_raw_fd(), TIOCGWINSZ, &mut ws);
+    }
+
+    if ret_val == -1 || ws.ws_row == 0 || ws.ws_col == 0 {
+        return Err("ioctl error");
     }
 
     Ok((ws.ws_row, ws.ws_col))

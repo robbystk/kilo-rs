@@ -102,6 +102,8 @@ fn get_cursor_position() -> Result<(usize, usize), std::io::Error> {
     // TODO: rework error handling
     io::stdout().write(b"\x1b[6n").unwrap();
     io::stdout().flush().unwrap();
+
+    // cursor position report
     let cpr: Vec<u8> = io::stdin().bytes()
         .fuse()
         .map(|e| e.unwrap())
@@ -109,7 +111,7 @@ fn get_cursor_position() -> Result<(usize, usize), std::io::Error> {
 
     if cpr[0] != '\x1b' as u8 || cpr[1] != '[' as u8 {
         return Err(Error::new(ErrorKind::Other,
-            "invalid character position report"));
+            "invalid cursor position report"));
     }
     let data: Vec<usize> = str::from_utf8(&cpr[1..]).unwrap()
         .trim_matches(|c| c == 'R' || c == '[')

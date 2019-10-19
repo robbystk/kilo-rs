@@ -154,12 +154,14 @@ fn editor_draw_rows(config: &EditorConfig, buf: &mut String) {
     for i in 0..config.rows {
         if i == config.rows / 3 {
             let mut welcome = format!("Kilo Editor -- version {}", KILO_VERSION);
-            if welcome.len() > config.cols {
-                welcome = String::from_utf8(
-                        welcome.into_bytes()[0..config.cols]
-                        .to_vec()
-                    ).unwrap();
+
+            // truncate to terminal width or less
+            let mut welcome_len = welcome.len();
+            while welcome_len > config.cols || !welcome.is_char_boundary(welcome_len) {
+                welcome_len -= 1;
             }
+            welcome.truncate(welcome_len);
+
             let mut padding = (config.cols - welcome.len()) / 2;
             if padding > 0 {
                 buf.push('~');

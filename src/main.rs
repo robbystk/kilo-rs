@@ -21,6 +21,8 @@ const KILO_VERSION: &str = "0.0.1";
 
 /// Stores editor configuration such as terminal size
 struct EditorConfig {
+    cx: usize,
+    cy: usize,
     orig_termios: Termios,
     rows: usize,
     cols: usize,
@@ -37,10 +39,34 @@ impl EditorConfig {
             .expect("Could not get window size");
 
         EditorConfig {
+            cx: 0,
+            cy: 0,
             orig_termios,
             rows,
             cols,
         }
+    }
+
+    /// Move cursor as appropriate given a key
+    fn move_cursor(&mut self, key: u8) {
+        match key as char {
+            'h' => self.cx -= 1,
+            'j' => self.cy += 1,
+            'k' => self.cy -= 1,
+            'l' => self.cx += 1,
+            _ => (),
+        }
+    }
+
+    /// Read and process a keypress
+    ///
+    /// Returns true if it's time to stop
+    fn process_keypress(&mut self) -> bool {
+        let c = editor_read_key();
+
+        self.move_cursor(c);
+
+        c == ctrl_key!('q')
     }
 }
 
@@ -193,7 +219,7 @@ fn editor_refresh_screen(config: &EditorConfig) {
     // draw a column of tildes like vim
     editor_draw_rows(config, &mut buf);
     // move cursor back to upper left
-    buf.push_str("\x1b[H");
+    buf.push_str(format!("\x1b[{};{}H", config.cy + 1, config.cx + 1).as_str());
     // show cursor
     buf.push_str("\x1b[?25h");
 
@@ -204,25 +230,15 @@ fn editor_refresh_screen(config: &EditorConfig) {
 
 /*** input ***/
 
-/// Read and process a keypress
-///
-/// Currently handls Ctrl-q to quit logic and prints the character or character
-/// code if it's a control character.
-fn editor_process_keypress() -> bool {
-    let c = editor_read_key();
-
-    // quit on Ctrl-q
-    c == ctrl_key!('q')
-}
 
 /*** init ***/
 
 fn main() {
-    let cfg = EditorConfig::setup();
+    let mut cfg = EditorConfig::setup();
 
     loop {
         editor_refresh_screen(&cfg);
-        if editor_process_keypress() {break;}
+        if cfg.process_keypress() {break;}
     }
 
     reset_mode(cfg.orig_termios);

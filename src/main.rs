@@ -48,12 +48,13 @@ impl EditorConfig {
     }
 
     /// Move cursor as appropriate given a key
-    fn move_cursor(&mut self, key: u8) {
-        match key as char {
-            'h' => self.cx -= 1,
-            'j' => self.cy += 1,
-            'k' => self.cy -= 1,
-            'l' => self.cx += 1,
+    fn move_cursor(&mut self, key: &EditorKey) {
+        use EditorKey::*;
+        match key {
+            ArrowLeft | Char(b'h') => self.cx -= 1,
+            ArrowDown | Char(b'j') => self.cy += 1,
+            ArrowUp | Char(b'k') => self.cy -= 1,
+            ArrowRight | Char(b'l') => self.cx += 1,
             _ => (),
         }
     }
@@ -64,9 +65,9 @@ impl EditorConfig {
     fn process_keypress(&mut self) -> bool {
         let c = editor_read_key();
 
-        self.move_cursor(c);
+        self.move_cursor(&c);
 
-        c == ctrl_key!('q')
+        c == EditorKey::Char(ctrl_key!('q'))
     }
 }
 
@@ -79,6 +80,15 @@ impl Drop for EditorConfig {
         stdout.flush().unwrap();
         reset_mode(self.orig_termios);
     }
+}
+
+#[derive(PartialEq)]
+enum EditorKey {
+    Char(u8),
+    ArrowUp,
+    ArrowDown,
+    ArrowRight,
+    ArrowLeft,
 }
 
 /*** terminal ***/
@@ -116,10 +126,10 @@ fn reset_mode(orig_mode: Termios) {
 /// Read a keypress from stdin
 ///
 /// Waits until a keypress or error is recieved.
-fn editor_read_key() -> u8 {
+fn editor_read_key() -> EditorKey {
     loop {
         if let Some(r) = io::stdin().bytes().next() {
-            return r.expect("read error");
+            return EditorKey::Char(r.expect("read error"));
         }
     }
 }

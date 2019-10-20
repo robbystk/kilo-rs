@@ -1,16 +1,22 @@
 /*** includes ***/
 use std::env::args;
-use std::fs::File;
 use std::io;
-use std::io::{BufRead, BufReader, Error, ErrorKind, Read, Write};
-use std::os::unix::io::AsRawFd;
+use std::io::{Write};
 use std::str;
 
 extern crate termios;
-use termios::*;
+use termios::Termios;
 
 extern crate libc;
-use libc::{ioctl, winsize, TIOCGWINSZ};
+
+mod input;
+mod output;
+mod terminal;
+mod file_io;
+
+use input::{EditorKey, editor_read_key};
+use terminal::{enable_raw_mode, reset_mode, get_window_size};
+use file_io::{editor_open};
 
 /*** macros ***/
 macro_rules! ctrl_key {
@@ -18,11 +24,10 @@ macro_rules! ctrl_key {
 }
 
 /*** data ***/
-
 const KILO_VERSION: &str = "0.0.1";
 
 /// Stores editor configuration such as terminal size
-struct EditorConfig {
+pub struct EditorConfig {
     cx: usize,
     cy: usize,
     orig_termios: Termios,
@@ -98,237 +103,6 @@ impl Drop for EditorConfig {
     }
 }
 
-#[derive(PartialEq)]
-enum EditorKey {
-    Char(u8),
-    ArrowUp,
-    ArrowDown,
-    ArrowRight,
-    ArrowLeft,
-    PageUp,
-    PageDown,
-    Home,
-    End,
-    Delete,
-}
-
-/*** terminal ***/
-
-/// Enables raw mode in the terminal
-///
-/// This includes setting a timeout of 0.1 seconds for reading stdin.  Saves and
-/// returns the original configuration so that the calling code can return the
-/// terminal to its original state using reset_mode() below.
-fn enable_raw_mode() -> Termios {
-    let stdin = io::stdin().as_raw_fd();
-
-    let orig_termios = Termios::from_fd(stdin).expect("tcgetattr");
-    let mut raw = orig_termios;
-
-    raw.c_lflag &= !(ECHO | ICANON | ISIG | IEXTEN);
-    raw.c_iflag &= !(IXON | ICRNL | BRKINT | INPCK | ISTRIP);
-    raw.c_oflag &= !(OPOST);
-    raw.c_cflag |= CS8;
-    raw.c_cc[VMIN] = 0;
-    raw.c_cc[VTIME] = 1;
-
-    tcsetattr(stdin, TCSAFLUSH, & mut raw).unwrap();
-
-    orig_termios
-}
-
-/// Reset the terminal to its original state
-fn reset_mode(orig_mode: Termios) {
-    let stdin = io::stdin().as_raw_fd();
-
-    tcsetattr(stdin, TCSAFLUSH, & orig_mode).unwrap();
-}
-
-/// Try to read a single byte from stdin
-///
-/// If successful, returns `Some(<byte>)`,
-/// if the timeout expires, returns `None`,
-/// and panics if an error occurrs.
-fn read_byte() -> Option<u8> {
-    io::stdin().bytes().next().map(|r| r.expect("read error"))
-}
-
-/// Read and interpret a keypress from stdin
-///
-/// Returns `None` if the timeout expires
-fn editor_read_key() -> Option<EditorKey> {
-    use EditorKey::*;
-    match read_byte() {
-        Some(c) if c == b'\x1b' => Some({
-            let mut seq = [None, None, None];
-            seq[0] = read_byte();
-            seq[1] = read_byte();
-            if seq[0].is_some() && seq[1].is_some() {
-                if seq[0] == Some(b'[') {
-                    match seq[1].unwrap() {
-                        b'0'..=b'9' => {
-                            seq[2] = read_byte();
-                            if seq[2] == Some(b'~') {
-                                match seq[1].unwrap() {
-                                    b'1' => Home,
-                                    b'3' => Delete,
-                                    b'4' => End,
-                                    b'5' => PageUp,
-                                    b'6' => PageDown,
-                                    b'7' => Home,
-                                    b'8' => End,
-                                    _ => Char(b'\x1b'),
-                                }
-                            } else {
-                                Char(b'\x1b')
-                            }
-                        },
-                        b'A' => ArrowUp,
-                        b'B' => ArrowDown,
-                        b'C' => ArrowRight,
-                        b'D' => ArrowLeft,
-                        b'F' => End,
-                        b'H' => Home,
-                        _ => Char(b'\x1b'),
-                    }
-                } else if seq[0] == Some(b'O') {
-                    match seq[1].unwrap() {
-                        b'F' => End,
-                        b'H' => Home,
-                        _ => Char(b'\x1b'),
-                    }
-                } else {
-                    Char(b'\x1b')
-                }
-            } else {
-                Char(b'\x1b')
-            }
-        }),
-        Some(c) => Some(Char(c)),
-        None => None,
-    }
-}
-
-
-fn get_cursor_position() -> Result<(usize, usize), std::io::Error> {
-    // TODO: rework error handling
-    io::stdout().write(b"\x1b[6n").unwrap();
-    io::stdout().flush().unwrap();
-
-    // cursor position report
-    let cpr: Vec<u8> = io::stdin().bytes()
-        .fuse()
-        .map(|e| e.unwrap())
-        .collect();
-
-    if cpr[0] != b'\x1b' || cpr[1] != b'[' {
-        return Err(Error::new(ErrorKind::Other,
-            "invalid cursor position report"));
-    }
-    let data: Vec<usize> = str::from_utf8(&cpr[1..]).unwrap()
-        .trim_matches(|c| c == 'R' || c == '[')
-        .split(';')
-        .map(|s| s.parse().expect("parse error"))
-        .collect();
-
-    Ok((data[0], data[1]))
-}
-
-fn get_window_size() -> Result<(usize, usize), std::io::Error> {
-    let mut ws = winsize {
-        ws_row: 0,
-        ws_col: 0,
-        ws_xpixel: 0,
-        ws_ypixel: 0,
-    };
-
-    let ret_val = unsafe {
-        ioctl(io::stdin().as_raw_fd(), TIOCGWINSZ, &mut ws)
-    };
-
-    if ret_val == -1 || ws.ws_row == 0 || ws.ws_col == 0 {
-        io::stdout().write(b"\x1b[999B\x1b[999C").unwrap();
-        return get_cursor_position();
-    }
-
-    Ok((ws.ws_row as usize, ws.ws_col as usize))
-}
-
-/*** file i/o ***/
-
-/// open the given filename and return a Vec of lines
-fn editor_open(filename: &str) -> Result<Vec<String>, std::io::Error> {
-    let f = File::open(filename)?;
-    let reader = BufReader::new(f);
-
-    let mut lines = Vec::new();
-    for line in reader.lines() {
-        lines.push(line?);
-    }
-    Ok(lines)
-}
-
-/*** output ***/
-
-/// Draw each row of the screen
-///
-/// Currently we have no lines, so this draws a tilde at the beginning of
-/// each line, like vim, and prints a centered welcome message a third
-/// of the way down the screen.
-fn editor_draw_rows(config: &EditorConfig, buf: &mut String) {
-    for y in 0..config.rows {
-        if y >= config.erows.len() {
-            if y == config.rows / 3 {
-                let mut welcome = format!("Kilo Editor -- version {}", KILO_VERSION);
-
-                // truncate to terminal width or less
-                let mut welcome_len = welcome.len();
-                while welcome_len > config.cols || !welcome.is_char_boundary(welcome_len) {
-                    welcome_len -= 1;
-                }
-                welcome.truncate(welcome_len);
-
-                let mut padding = (config.cols - welcome.len()) / 2;
-                if padding > 0 {
-                    buf.push('~');
-                    padding -= 1;
-                }
-                for _ in 0..padding { buf.push(' '); }
-                buf.push_str(&welcome);
-            } else {
-                buf.push('~');
-            }
-        } else {
-            buf.push_str(&config.erows[y])
-        }
-        // clear remainder of row
-        buf.push_str("\x1b[K");
-        if y < config.rows - 1 {
-            buf.push_str("\r\n");
-        }
-    }
-}
-
-/// Refresh the text on the screen
-fn editor_refresh_screen(config: &EditorConfig) {
-    let mut buf = String::from("");
-
-    // hide cursor
-    buf.push_str("\x1b[?25l");
-    // move cursor to top left
-    buf.push_str("\x1b[H");
-    // draw a column of tildes like vim
-    editor_draw_rows(config, &mut buf);
-    // move cursor back to upper left
-    buf.push_str(format!("\x1b[{};{}H", config.cy + 1, config.cx + 1).as_str());
-    // show cursor
-    buf.push_str("\x1b[?25h");
-
-    io::stdout().write(&buf.as_bytes()).unwrap();
-    // make sure things get written
-    io::stdout().flush().unwrap()
-}
-
 /*** init ***/
 
 pub fn run() {
@@ -341,7 +115,7 @@ pub fn run() {
     let mut cfg = EditorConfig::setup(&filename);
 
     loop {
-        editor_refresh_screen(&cfg);
+        output::editor_refresh_screen(&cfg);
         if cfg.process_keypress() { break; }
     }
 

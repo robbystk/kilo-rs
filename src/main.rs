@@ -63,11 +63,14 @@ impl EditorConfig {
     ///
     /// Returns true if it's time to stop
     fn process_keypress(&mut self) -> bool {
-        let c = editor_read_key();
-
-        self.move_cursor(&c);
-
-        c == EditorKey::Char(ctrl_key!('q'))
+        match editor_read_key() {
+            Some(EditorKey::Char(c)) if c == ctrl_key!(b'q') => true,
+            Some(k) => {
+                self.move_cursor(&k);
+                false
+            },
+            None => false,
+        }
     }
 }
 
@@ -125,14 +128,15 @@ fn reset_mode(orig_mode: Termios) {
 
 /// Read a keypress from stdin
 ///
-/// Waits until a keypress or error is recieved.
-fn editor_read_key() -> EditorKey {
-    loop {
-        if let Some(r) = io::stdin().bytes().next() {
-            return EditorKey::Char(r.expect("read error"));
-        }
+/// Returns `None` if the timeout expires
+fn editor_read_key() -> Option<EditorKey> {
+    if let Some(r) = io::stdin().bytes().next() {
+        Some(EditorKey::Char(r.expect("read error")))
+    } else {
+        None
     }
 }
+
 
 fn get_cursor_position() -> Result<(usize, usize), std::io::Error> {
     // TODO: rework error handling

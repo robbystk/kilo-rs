@@ -130,10 +130,30 @@ fn reset_mode(orig_mode: Termios) {
 ///
 /// Returns `None` if the timeout expires
 fn editor_read_key() -> Option<EditorKey> {
-    if let Some(r) = io::stdin().bytes().next() {
-        Some(EditorKey::Char(r.expect("read error")))
-    } else {
-        None
+    use EditorKey::*;
+    match io::stdin().bytes().next() {
+        Some(Ok(c)) if c == 0x1b => Some({
+            let mut seq = [None, None, None];
+            seq[0] = io::stdin().bytes().next().map(|r| r.expect("read error"));
+            seq[1] = io::stdin().bytes().next().map(|r| r.expect("read error"));
+            if seq[0].is_some() && seq[1].is_some() {
+                if seq[0] == Some(b'[') {
+                    match seq[1].unwrap() {
+                        b'A' => ArrowUp,
+                        b'B' => ArrowDown,
+                        b'C' => ArrowRight,
+                        b'D' => ArrowLeft,
+                        _ => Char(0x1b),
+                    }
+                } else {
+                    Char(0x1b)
+                }
+            } else {
+                Char(0x1b)
+            }
+        }),
+        Some(r) => Some(Char(r.expect("read error"))),
+        None => None,
     }
 }
 

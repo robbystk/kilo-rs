@@ -100,6 +100,7 @@ enum EditorKey {
     PageDown,
     Home,
     End,
+    Delete,
 }
 
 /*** terminal ***/
@@ -160,6 +161,7 @@ fn editor_read_key() -> Option<EditorKey> {
                         if seq[2] == Some(b'~') {
                             match seq[1].unwrap() {
                                 b'1' => Home,
+                                b'3' => Delete,
                                 b'4' => End,
                                 b'5' => PageUp,
                                 b'6' => PageDown,

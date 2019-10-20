@@ -126,16 +126,25 @@ fn reset_mode(orig_mode: Termios) {
     tcsetattr(stdin, TCSAFLUSH, & orig_mode).unwrap();
 }
 
-/// Read a keypress from stdin
+/// Try to read a single byte from stdin
+///
+/// If successful, returns `Some(<byte>)`,
+/// if the timeout expires, returns `None`,
+/// and panics if an error occurrs.
+fn read_byte() -> Option<u8> {
+    io::stdin().bytes().next().map(|r| r.expect("read error"))
+}
+
+/// Read and interpret a keypress from stdin
 ///
 /// Returns `None` if the timeout expires
 fn editor_read_key() -> Option<EditorKey> {
     use EditorKey::*;
-    match io::stdin().bytes().next() {
-        Some(Ok(c)) if c == 0x1b => Some({
+    match read_byte() {
+        Some(c) if c == 0x1b => Some({
             let mut seq = [None, None, None];
-            seq[0] = io::stdin().bytes().next().map(|r| r.expect("read error"));
-            seq[1] = io::stdin().bytes().next().map(|r| r.expect("read error"));
+            seq[0] = read_byte();
+            seq[1] = read_byte();
             if seq[0].is_some() && seq[1].is_some() {
                 if seq[0] == Some(b'[') {
                     match seq[1].unwrap() {
@@ -152,7 +161,7 @@ fn editor_read_key() -> Option<EditorKey> {
                 Char(0x1b)
             }
         }),
-        Some(r) => Some(Char(r.expect("read error"))),
+        Some(c) => Some(Char(c)),
         None => None,
     }
 }

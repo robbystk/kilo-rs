@@ -55,6 +55,8 @@ impl EditorConfig {
             ArrowDown | Char(b'j') => { if self.cy < self.rows - 1{ self.cy += 1; } },
             ArrowUp | Char(b'k') => { if self.cy > 0 { self.cy -= 1; } },
             ArrowRight | Char(b'l') => { if self.cx < self.cols - 1 { self.cx += 1; } },
+            PageUp => for _ in 0..self.rows { self.move_cursor(&ArrowUp) },
+            PageDown => for _ in 0..self.rows { self.move_cursor(&ArrowDown) },
             _ => (),
         }
     }
@@ -92,6 +94,8 @@ enum EditorKey {
     ArrowDown,
     ArrowRight,
     ArrowLeft,
+    PageUp,
+    PageDown,
 }
 
 /*** terminal ***/
@@ -147,12 +151,25 @@ fn editor_read_key() -> Option<EditorKey> {
             seq[1] = read_byte();
             if seq[0].is_some() && seq[1].is_some() {
                 if seq[0] == Some(b'[') {
-                    match seq[1].unwrap() {
-                        b'A' => ArrowUp,
-                        b'B' => ArrowDown,
-                        b'C' => ArrowRight,
-                        b'D' => ArrowLeft,
-                        _ => Char(b'\x1b'),
+                    if Some(b'0') <= seq[1] && seq[1] <= Some(b'9') {
+                        seq[2] = read_byte();
+                        if seq[2] == Some(b'~') {
+                            match seq[1].unwrap() {
+                                b'5' => PageUp,
+                                b'6' => PageDown,
+                                _ => Char(b'\x1b'),
+                            }
+                        } else {
+                            Char(b'\x1b')
+                        }
+                    } else {
+                        match seq[1].unwrap() {
+                            b'A' => ArrowUp,
+                            b'B' => ArrowDown,
+                            b'C' => ArrowRight,
+                            b'D' => ArrowLeft,
+                            _ => Char(b'\x1b'),
+                        }
                     }
                 } else {
                     Char(b'\x1b')

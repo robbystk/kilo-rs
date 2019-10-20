@@ -141,7 +141,7 @@ fn read_byte() -> Option<u8> {
 fn editor_read_key() -> Option<EditorKey> {
     use EditorKey::*;
     match read_byte() {
-        Some(c) if c == 0x1b => Some({
+        Some(c) if c == b'\x1b' => Some({
             let mut seq = [None, None, None];
             seq[0] = read_byte();
             seq[1] = read_byte();
@@ -152,13 +152,13 @@ fn editor_read_key() -> Option<EditorKey> {
                         b'B' => ArrowDown,
                         b'C' => ArrowRight,
                         b'D' => ArrowLeft,
-                        _ => Char(0x1b),
+                        _ => Char(b'\x1b'),
                     }
                 } else {
-                    Char(0x1b)
+                    Char(b'\x1b')
                 }
             } else {
-                Char(0x1b)
+                Char(b'\x1b')
             }
         }),
         Some(c) => Some(Char(c)),
@@ -178,7 +178,7 @@ fn get_cursor_position() -> Result<(usize, usize), std::io::Error> {
         .map(|e| e.unwrap())
         .collect();
 
-    if cpr[0] != '\x1b' as u8 || cpr[1] != '[' as u8 {
+    if cpr[0] != b'\x1b' || cpr[1] != b'[' {
         return Err(Error::new(ErrorKind::Other,
             "invalid cursor position report"));
     }

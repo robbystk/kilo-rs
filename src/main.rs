@@ -156,32 +156,31 @@ fn editor_read_key() -> Option<EditorKey> {
             seq[1] = read_byte();
             if seq[0].is_some() && seq[1].is_some() {
                 if seq[0] == Some(b'[') {
-                    if Some(b'0') <= seq[1] && seq[1] <= Some(b'9') {
-                        seq[2] = read_byte();
-                        if seq[2] == Some(b'~') {
-                            match seq[1].unwrap() {
-                                b'1' => Home,
-                                b'3' => Delete,
-                                b'4' => End,
-                                b'5' => PageUp,
-                                b'6' => PageDown,
-                                b'7' => Home,
-                                b'8' => End,
-                                _ => Char(b'\x1b'),
+                    match seq[1].unwrap() {
+                        b'0'..=b'9' => {
+                            seq[2] = read_byte();
+                            if seq[2] == Some(b'~') {
+                                match seq[1].unwrap() {
+                                    b'1' => Home,
+                                    b'3' => Delete,
+                                    b'4' => End,
+                                    b'5' => PageUp,
+                                    b'6' => PageDown,
+                                    b'7' => Home,
+                                    b'8' => End,
+                                    _ => Char(b'\x1b'),
+                                }
+                            } else {
+                                Char(b'\x1b')
                             }
-                        } else {
-                            Char(b'\x1b')
-                        }
-                    } else {
-                        match seq[1].unwrap() {
-                            b'A' => ArrowUp,
-                            b'B' => ArrowDown,
-                            b'C' => ArrowRight,
-                            b'D' => ArrowLeft,
-                            b'F' => End,
-                            b'H' => Home,
-                            _ => Char(b'\x1b'),
-                        }
+                        },
+                        b'A' => ArrowUp,
+                        b'B' => ArrowDown,
+                        b'C' => ArrowRight,
+                        b'D' => ArrowLeft,
+                        b'F' => End,
+                        b'H' => Home,
+                        _ => Char(b'\x1b'),
                     }
                 } else if seq[0] == Some(b'O') {
                     match seq[1].unwrap() {

@@ -35,28 +35,28 @@ fn reset_mode(orig_mode: Termios) {
     tcsetattr(stdin, TCSAFLUSH, & orig_mode).unwrap();
 }
 
-fn editor_read_key() -> u8 {
-    loop {
-        if let Some(r) = io::stdin().bytes().next() {
-            return r.expect("read error");
-        }
+fn editor_read_key() -> Option<u8> {
+    if let Some(r) = io::stdin().bytes().next() {
+        Some(r.expect("read error"))
+    } else {
+        None
     }
 }
 
 fn editor_process_keypress(orig: Termios) {
-    let c = editor_read_key();
+    let k = editor_read_key();
 
     // quit on Ctrl-q
-    if c == ctrl_key!('q') {
+    if k == Some(ctrl_key!(b'q')) {
         reset_mode(orig);
         exit(0);
     }
 
     // print character
-    if char::from(c).is_ascii_control() {
-        print!("{}\r\n", c);
-    } else {
-        print!("{} ({})\r\n", c, char::from(c));
+    match k {
+        Some(c) if char::from(c).is_ascii_control() => print!("{}\r\n", c),
+        Some(c) => print!("{} ({})\r\n", c, char::from(c)),
+        None => print!("0\r\n"),
     }
 }
 

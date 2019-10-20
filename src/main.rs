@@ -57,7 +57,9 @@ impl EditorConfig {
             ArrowRight | Char(b'l') => { if self.cx < self.cols - 1 { self.cx += 1; } },
             PageUp => for _ in 0..self.rows { self.move_cursor(&ArrowUp) },
             PageDown => for _ in 0..self.rows { self.move_cursor(&ArrowDown) },
-            _ => (),
+            Home => self.cx = 0,
+            End => self.cx = self.cols - 1,
+            _ => ()
         }
     }
 
@@ -96,6 +98,8 @@ enum EditorKey {
     ArrowLeft,
     PageUp,
     PageDown,
+    Home,
+    End,
 }
 
 /*** terminal ***/
@@ -155,8 +159,12 @@ fn editor_read_key() -> Option<EditorKey> {
                         seq[2] = read_byte();
                         if seq[2] == Some(b'~') {
                             match seq[1].unwrap() {
+                                b'1' => Home,
+                                b'4' => End,
                                 b'5' => PageUp,
                                 b'6' => PageDown,
+                                b'7' => Home,
+                                b'8' => End,
                                 _ => Char(b'\x1b'),
                             }
                         } else {
@@ -168,8 +176,16 @@ fn editor_read_key() -> Option<EditorKey> {
                             b'B' => ArrowDown,
                             b'C' => ArrowRight,
                             b'D' => ArrowLeft,
+                            b'F' => End,
+                            b'H' => Home,
                             _ => Char(b'\x1b'),
                         }
+                    }
+                } else if seq[0] == Some(b'O') {
+                    match seq[1].unwrap() {
+                        b'F' => End,
+                        b'H' => Home,
+                        _ => Char(b'\x1b'),
                     }
                 } else {
                     Char(b'\x1b')

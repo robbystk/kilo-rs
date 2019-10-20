@@ -199,10 +199,9 @@ fn get_window_size() -> Result<(usize, usize), std::io::Error> {
         ws_ypixel: 0,
     };
 
-    let ret_val;
-    unsafe {
-        ret_val = ioctl(io::stdin().as_raw_fd(), TIOCGWINSZ, &mut ws);
-    }
+    let ret_val = unsafe {
+        ioctl(io::stdin().as_raw_fd(), TIOCGWINSZ, &mut ws)
+    };
 
     if ret_val == -1 || ws.ws_row == 0 || ws.ws_col == 0 {
         io::stdout().write(b"\x1b[999B\x1b[999C").unwrap();
@@ -236,9 +235,7 @@ fn editor_draw_rows(config: &EditorConfig, buf: &mut String) {
                 buf.push('~');
                 padding -= 1;
             }
-            for _ in 0..padding {
-                buf.push(' ');
-            }
+            for _ in 0..padding { buf.push(' '); }
             buf.push_str(&welcome);
         } else {
             buf.push('~');
@@ -281,7 +278,7 @@ fn main() {
 
     loop {
         editor_refresh_screen(&cfg);
-        if cfg.process_keypress() {break;}
+        if cfg.process_keypress() { break; }
     }
 
     reset_mode(cfg.orig_termios);

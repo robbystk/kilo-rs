@@ -44,16 +44,12 @@ fn editor_read_key() -> Option<u8> {
 }
 
 fn editor_process_keypress(orig: Termios) {
-    let k = editor_read_key();
-
-    // quit on Ctrl-q
-    if k == Some(ctrl_key!(b'q')) {
-        reset_mode(orig);
-        exit(0);
-    }
-
     // print character
-    match k {
+    match editor_read_key() {
+        Some(c) if c == ctrl_key!(b'q') => {
+            reset_mode(orig);
+            exit(0);
+        },
         Some(c) if char::from(c).is_ascii_control() => print!("{}\r\n", c),
         Some(c) => print!("{} ({})\r\n", c, char::from(c)),
         None => print!("0\r\n"),

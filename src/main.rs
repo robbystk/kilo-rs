@@ -51,10 +51,10 @@ impl EditorConfig {
     fn move_cursor(&mut self, key: &EditorKey) {
         use EditorKey::*;
         match key {
-            ArrowLeft | Char(b'h') => self.cx -= 1,
-            ArrowDown | Char(b'j') => self.cy += 1,
-            ArrowUp | Char(b'k') => self.cy -= 1,
-            ArrowRight | Char(b'l') => self.cx += 1,
+            ArrowLeft | Char(b'h') => { if self.cx > 0 { self.cx -= 1; } },
+            ArrowDown | Char(b'j') => { if self.cy < self.rows - 1{ self.cy += 1; } },
+            ArrowUp | Char(b'k') => { if self.cy > 0 { self.cy -= 1; } },
+            ArrowRight | Char(b'l') => { if self.cx < self.cols - 1 { self.cx += 1; } },
             _ => (),
         }
     }

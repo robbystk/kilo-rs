@@ -20,21 +20,21 @@ macro_rules! ctrl_key {
 const KILO_VERSION: &str = "0.0.1";
 
 /// Stores editor configuration such as terminal size
-struct EditorConfig<'a> {
+struct EditorConfig {
     cx: usize,
     cy: usize,
     orig_termios: Termios,
     rows: usize,
     cols: usize,
-    erows: Vec<&'a str>,
+    erows: Vec<String>,
 }
 
-impl<'a> EditorConfig<'a> {
+impl EditorConfig {
     /// Initializes the configuration
     ///
     /// Includes enabling raw mode and saving the original terminal
     /// configuration for restoration upon exit.
-    fn setup() -> EditorConfig<'a> {
+    fn setup() -> EditorConfig {
         let orig_termios = enable_raw_mode();
         let (rows, cols) = get_window_size()
             .expect("Could not get window size");
@@ -45,7 +45,7 @@ impl<'a> EditorConfig<'a> {
             orig_termios,
             rows,
             cols,
-            erows: vec!["Hello, world!"],
+            erows: vec![String::from("Hello, world!")],
         }
     }
 
@@ -80,7 +80,7 @@ impl<'a> EditorConfig<'a> {
     }
 }
 
-impl<'a> Drop for EditorConfig<'a> {
+impl Drop for EditorConfig {
     fn drop(&mut self) {
         // clear screen and restore terminal settings
         let mut stdout = io::stdout();
@@ -278,7 +278,7 @@ fn editor_draw_rows(config: &EditorConfig, buf: &mut String) {
                 buf.push('~');
             }
         } else {
-            buf.push_str(config.erows[y])
+            buf.push_str(&config.erows[y])
         }
         // clear remainder of row
         buf.push_str("\x1b[K");

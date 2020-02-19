@@ -20,20 +20,21 @@ macro_rules! ctrl_key {
 const KILO_VERSION: &str = "0.0.1";
 
 /// Stores editor configuration such as terminal size
-struct EditorConfig {
+struct EditorConfig<'a> {
     cx: usize,
     cy: usize,
     orig_termios: Termios,
     rows: usize,
     cols: usize,
+    erows: Vec<&'a str>,
 }
 
-impl EditorConfig {
+impl<'a> EditorConfig<'a> {
     /// Initializes the configuration
     ///
     /// Includes enabling raw mode and saving the original terminal
     /// configuration for restoration upon exit.
-    fn setup() -> EditorConfig {
+    fn setup() -> EditorConfig<'a> {
         let orig_termios = enable_raw_mode();
         let (rows, cols) = get_window_size()
             .expect("Could not get window size");
@@ -44,6 +45,7 @@ impl EditorConfig {
             orig_termios,
             rows,
             cols,
+            erows: vec!["Hello, world!"],
         }
     }
 
@@ -78,7 +80,7 @@ impl EditorConfig {
     }
 }
 
-impl Drop for EditorConfig {
+impl<'a> Drop for EditorConfig<'a> {
     fn drop(&mut self) {
         // clear screen and restore terminal settings
         let mut stdout = io::stdout();
@@ -253,30 +255,34 @@ fn get_window_size() -> Result<(usize, usize), std::io::Error> {
 /// each line, like vim, and prints a centered welcome message a third
 /// of the way down the screen.
 fn editor_draw_rows(config: &EditorConfig, buf: &mut String) {
-    for i in 0..config.rows {
-        if i == config.rows / 3 {
-            let mut welcome = format!("Kilo Editor -- version {}", KILO_VERSION);
+    for y in 0..config.rows {
+        if y >= config.erows.len() {
+            if y == config.rows / 3 {
+                let mut welcome = format!("Kilo Editor -- version {}", KILO_VERSION);
 
-            // truncate to terminal width or less
-            let mut welcome_len = welcome.len();
-            while welcome_len > config.cols || !welcome.is_char_boundary(welcome_len) {
-                welcome_len -= 1;
-            }
-            welcome.truncate(welcome_len);
+                // truncate to terminal width or less
+                let mut welcome_len = welcome.len();
+                while welcome_len > config.cols || !welcome.is_char_boundary(welcome_len) {
+                    welcome_len -= 1;
+                }
+                welcome.truncate(welcome_len);
 
-            let mut padding = (config.cols - welcome.len()) / 2;
-            if padding > 0 {
+                let mut padding = (config.cols - welcome.len()) / 2;
+                if padding > 0 {
+                    buf.push('~');
+                    padding -= 1;
+                }
+                for _ in 0..padding { buf.push(' '); }
+                buf.push_str(&welcome);
+            } else {
                 buf.push('~');
-                padding -= 1;
             }
-            for _ in 0..padding { buf.push(' '); }
-            buf.push_str(&welcome);
         } else {
-            buf.push('~');
+            buf.push_str(config.erows[y])
         }
         // clear remainder of row
         buf.push_str("\x1b[K");
-        if i < config.rows - 1 {
+        if y < config.rows - 1 {
             buf.push_str("\r\n");
         }
     }

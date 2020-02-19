@@ -1,6 +1,8 @@
 /*** includes ***/
+use std::env::args;
+use std::fs::File;
 use std::io;
-use std::io::{Read, Write, Error, ErrorKind};
+use std::io::{BufRead, BufReader, Error, ErrorKind, Read, Write};
 use std::os::unix::io::AsRawFd;
 use std::str;
 
@@ -45,7 +47,7 @@ impl EditorConfig {
             orig_termios,
             rows,
             cols,
-            erows: vec![String::from("Hello, world!")],
+            erows: editor_open(filename).unwrap(),
         }
     }
 
@@ -247,6 +249,19 @@ fn get_window_size() -> Result<(usize, usize), std::io::Error> {
     Ok((ws.ws_row as usize, ws.ws_col as usize))
 }
 
+/*** file i/o ***/
+
+fn editor_open(filename: &str) -> Result<Vec<String>, std::io::Error> {
+    let f = File::open(filename)?;
+    let reader = BufReader::new(f);
+
+    let mut lines = Vec::new();
+    for line in reader.lines() {
+        lines.push(line?);
+    }
+    Ok(lines)
+}
+
 /*** output ***/
 
 /// Draw each row of the screen
@@ -308,13 +323,12 @@ fn editor_refresh_screen(config: &EditorConfig) {
     io::stdout().flush().unwrap()
 }
 
-/*** input ***/
-
-
 /*** init ***/
 
 fn main() {
-    let mut cfg = EditorConfig::setup();
+    let argv = args().collect::<Vec<String>>();
+    let filename = &argv[1];
+    let mut cfg = EditorConfig::setup(filename);
 
     loop {
         editor_refresh_screen(&cfg);

@@ -36,7 +36,7 @@ impl EditorConfig {
     ///
     /// Includes enabling raw mode and saving the original terminal
     /// configuration for restoration upon exit.
-    fn setup() -> EditorConfig {
+    fn setup(filename: &str) -> EditorConfig {
         let orig_termios = enable_raw_mode();
         let (rows, cols) = get_window_size()
             .expect("Could not get window size");

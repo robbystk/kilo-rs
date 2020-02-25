@@ -251,6 +251,7 @@ fn get_window_size() -> Result<(usize, usize), std::io::Error> {
 
 /*** file i/o ***/
 
+/// open the given filename and return a Vec of lines
 fn editor_open(filename: &str) -> Result<Vec<String>, std::io::Error> {
     let f = File::open(filename)?;
     let reader = BufReader::new(f);

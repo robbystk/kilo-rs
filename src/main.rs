@@ -36,10 +36,15 @@ impl EditorConfig {
     ///
     /// Includes enabling raw mode and saving the original terminal
     /// configuration for restoration upon exit.
-    fn setup(filename: &str) -> EditorConfig {
+    fn setup(filename: &Option<&str>) -> EditorConfig {
         let orig_termios = enable_raw_mode();
         let (rows, cols) = get_window_size()
             .expect("Could not get window size");
+
+        let erows = match filename {
+            Some(filename) => editor_open(filename).unwrap(),
+            None => Vec::new(),
+        };
 
         EditorConfig {
             cx: 0,
@@ -47,7 +52,7 @@ impl EditorConfig {
             orig_termios,
             rows,
             cols,
-            erows: editor_open(filename).unwrap(),
+            erows,
         }
     }
 
@@ -328,8 +333,12 @@ fn editor_refresh_screen(config: &EditorConfig) {
 
 fn main() {
     let argv = args().collect::<Vec<String>>();
-    let filename = &argv[1];
-    let mut cfg = EditorConfig::setup(filename);
+    let filename = if argv.len() > 1 {
+        Some(argv[1].as_str())
+    } else {
+        None
+    };
+    let mut cfg = EditorConfig::setup(&filename);
 
     loop {
         editor_refresh_screen(&cfg);
